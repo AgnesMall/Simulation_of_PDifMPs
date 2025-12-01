@@ -4,16 +4,19 @@ using namespace Rcpp;
 using namespace std;
 
 
-// Matrix vector multiplications
-// [[Rcpp::export]]
-NumericVector mv_zlt_(NumericMatrix M, NumericVector v) {
-  arma::mat A(M.begin(), M.nrow(), M.ncol(), false);  // 'false' = no copy
-  arma::colvec x(v.begin(), v.size(), false);
-  arma::colvec result = A * x;
-  return NumericVector(result.begin(), result.end());
-}
 
 
+
+
+//------------------------------------------------------------------------------
+// Exponential matrix (Simple Oscillator)
+//------------------------------------------------------------------------------
+
+// Input:
+// t      time point
+// z      frequency of oscillator 
+
+// Output: Exponential matrix
 
 // [[Rcpp::export]]
 NumericMatrix exp_mat_simple_Cpp(double t, double z){
@@ -25,6 +28,17 @@ NumericMatrix exp_mat_simple_Cpp(double t, double z){
 }
 
 
+//------------------------------------------------------------------------------
+// Covariance matrix (Simple Oscillator)
+//------------------------------------------------------------------------------
+
+// Input:
+// t      time point
+// sig    diffusion coefficient
+// z      frequency
+
+// Output: Covariance matrix
+
 // [[Rcpp::export]]
 NumericMatrix cov_mat_simple_Cpp(double t, double sig, double z){
   NumericMatrix ret(2,2);
@@ -35,7 +49,16 @@ NumericMatrix cov_mat_simple_Cpp(double t, double sig, double z){
 }
 
 
+//------------------------------------------------------------------------------
+// Exponential matrix (Damped Oscillator)
+//------------------------------------------------------------------------------
 
+// Input:
+// t      time point
+// a      damping parameter
+// b      frequency of oscillator  
+
+// Output: Exponential matrix
 
 // [[Rcpp::export]]
 NumericMatrix exp_mat_Cpp(double t, double a, double b){
@@ -47,6 +70,19 @@ NumericMatrix exp_mat_Cpp(double t, double a, double b){
   ret(1,_) = NumericVector::create((-pow(b,2)/d)*sdt,cdt-(a/d)*sdt);
   return exp(-a*t)*ret;
 }
+
+
+//------------------------------------------------------------------------------
+// Covariance matrix (Damped Oscillator)
+//------------------------------------------------------------------------------
+
+// Input:
+// t      time point
+// sig    diffusion coefficient
+// a      damping parameter
+// b      frequency of oscillator  
+
+// Output: Covariance matrix
 
 // [[Rcpp::export]]
 NumericMatrix cov_mat_Cpp(double t, double sig, double a, double b){
@@ -64,8 +100,18 @@ NumericMatrix cov_mat_Cpp(double t, double sig, double a, double b){
 
 
 
+//------------------------------------------------------------------------------
+// Cholesky decomposition
+//------------------------------------------------------------------------------
 
-// Chelosky decomposition
+// Input:
+// mat    NumericMatrix
+// z      frequency of oscillator 
+// t      time point
+
+
+// Output: Matrix of Cholesky decomposition
+
 // [[Rcpp::export]]
 NumericMatrix cholesky_decomp(Rcpp::NumericMatrix mat, double z, double t) {
   arma::mat A = Rcpp::as<arma::mat>(mat);     
@@ -83,7 +129,35 @@ NumericMatrix cholesky_decomp(Rcpp::NumericMatrix mat, double z, double t) {
   return Rcpp::wrap(R);                      
 }
 
+//------------------------------------------------------------------------------
+// Matrix Vector multiplication
+//------------------------------------------------------------------------------
+
+// Input:
+// M      Numericmatrix
+// v      NumericVector
+
+// Output: product of matrix and vector
+
+// [[Rcpp::export]]
+NumericVector mv_zlt_(NumericMatrix M, NumericVector v) {
+  arma::mat A(M.begin(), M.nrow(), M.ncol(), false);  // 'false' = no copy
+  arma::colvec x(v.begin(), v.size(), false);
+  arma::colvec result = A * x;
+  return NumericVector(result.begin(), result.end());
+}
+
+
+//------------------------------------------------------------------------------
 // Transpose matrix
+//------------------------------------------------------------------------------
+
+// Input:
+// A      NumericMatrix
+
+// Output: Transposed matrix
+
+
 // [[Rcpp::export]]
 NumericMatrix transpose(NumericMatrix A) {
 
@@ -95,25 +169,42 @@ NumericMatrix transpose(NumericMatrix A) {
 
 
 
+//------------------------------------------------------------------------------
+// Solution of the Switched stochastic harmonic oscillator (SwitchedSHO)
+//------------------------------------------------------------------------------
+
+// Input:
+// startv   initial value
+// t_fin    end point of one interval
+// t0       starting point of one interval
+// h        step size
+// sig      diffusion coefficient
+// z        damping parameter 
+// a        frequency of WDSHO
+
+// Output: path of the Switched SHO PDifMP from t_0 to t_fin
+
 // [[Rcpp::export]]
 NumericMatrix sde_SHO_cpp_t(NumericVector startv,double t_fin,double t0,double h,double sig, double z, double a){
   
-  double eps = 1e-8;
-  int N = floor((t_fin - t0) / h + eps);
+  double eps = 1e-8;                      // add eps to avoid eroors caused by floating-point rounding
+  int N = floor((t_fin - t0) / h + eps);  // number of steps of size h
   
-  NumericVector newv = startv;
+  NumericVector newv = startv;            // set first value to startv
   NumericVector randvec(2);
   
   int num_cols = N + 1;
   
   
-  NumericMatrix sol(2,num_cols);
-  NumericMatrix randarr(2,num_cols-1);
+  NumericMatrix sol(2,num_cols);          // create a Matrix object for the path of size N + 1
+  NumericMatrix randarr(2,num_cols-1);    // generate 2N standard normal distributed random values 
   randarr(0,_) = rnorm(num_cols-1);
   randarr(1,_) = rnorm(num_cols-1);
   
   
   sol(_, 0) = startv;
+  
+  // path of the WDSHO / Simple SHO
   
   if(N > 0){
     for(int i=0;i<N;i++)
@@ -138,12 +229,22 @@ NumericMatrix sde_SHO_cpp_t(NumericVector startv,double t_fin,double t0,double h
     }
   }
   
-  return sol(_, Range(1,N));
+  return sol(_, Range(1,N));      // return path without the initial value
 }
 
 
+//------------------------------------------------------------------------------
+// Append function for two matrices
+//------------------------------------------------------------------------------
 
-// Append matrix to other matrix
+// Input:
+// A      NumericMatrix
+// B      NumericMatrix
+
+
+// Output: matrix containing A and B
+
+
 // [[Rcpp::export]]
 NumericMatrix matrixAppend(NumericMatrix A, NumericMatrix B) {
   int nrow_A = A.nrow();
@@ -158,7 +259,16 @@ NumericMatrix matrixAppend(NumericMatrix A, NumericMatrix B) {
 }
 
 
+//------------------------------------------------------------------------------
+// Transition kernel
+//------------------------------------------------------------------------------
 
+// Input:
+// z      previous value of z
+// b      possible new value for z
+
+
+// Output: new value for z
 
 // [[Rcpp::export]]
 double drawZ_binary_cpp_t(double z, double b){
@@ -169,10 +279,33 @@ double drawZ_binary_cpp_t(double z, double b){
 }
 
 
+//------------------------------------------------------------------------------
+// Solution of the OU PDifMP
+//------------------------------------------------------------------------------
+
+// Input:
+// t_fin    time horizon
+// h        step size
+// startv   initial value of the continuous component
+// z0       initial value of the jump component
+// sig      diffusion coefficient
+// b        parameter of the jump component
+// lambda0  constant jump rate
+// a        frequency
+
+// Output: path of the Switched SHO PDifMP from 0 to t_fin 
+//            (
+//              X           vector of continuous componen t
+//              zVec        vector of jump component
+//              jumps       vector of jump times
+//            )
 
 
 // [[Rcpp::export]]
 List tp4_cpp_t(int t_fin,double h,NumericVector startv,double z0,double sig,double b,double lambda0,double a){
+  
+  // set initial values
+  
   double z = z0;
   NumericVector zVec = {z0};
   
@@ -189,31 +322,37 @@ List tp4_cpp_t(int t_fin,double h,NumericVector startv,double z0,double sig,doub
   double t = t0; // enter while loop
   
   
-  while(t == t0){
-    u = {runif(1)};
-    tVec = t0 - (1.0/lambda0)*log(u[0]);
-    tVec = round(tVec,-log10(h));
+  while(t == t0){                         // jump time should be different from t0
+    u = {runif(1)};                       // generate standard uniform distributed random variable
+    tVec = t0 - (1.0/lambda0)*log(u[0]);  // generate exponential distributed random variable with rate lambda0
+    tVec = round(tVec,-log10(h));         // round jump time to avoid numerical instability
     t = tVec[0];
   }
   
   while(t < t_fin){
     jumps.push_back(t);
     
+    // Simulate solution of the Switched SHO until jump time t
+    
     NumericMatrix tempX =  sde_SHO_cpp_t(X(_, X.ncol() - 1),t,t0,h,sig,z,a);
     X = matrixAppend(X,tempX);
+    
+    // new value for z according to transition kernel
+    
     z = drawZ_binary_cpp_t(z,b);
     zVec.push_back(z); 
     
-    
     t0 = t;
     
-    while(t == t0){
-      u = {runif(1)};
-      tVec = t - (1/lambda0)*log(u[0]); 
-      tVec = round(tVec,-log10(h));
+    while(t == t0){                     // jump time should be different from previous jump time t0
+      u = {runif(1)};                   // generate standard uniform distributed random variable
+      tVec = t - (1/lambda0)*log(u[0]); // generate exponential distributed random variable with rate lambda0
+      tVec = round(tVec,-log10(h));     // round jump time to avoid numerical instability
       t = tVec[0];
     }
   };
+  
+  // Simulate solution of the Switched SHO until time horizon t_fin
   
   X = matrixAppend(X, sde_SHO_cpp_t(X(_, X.ncol() - 1),t_fin,t0,h,sig,z,a));
   
