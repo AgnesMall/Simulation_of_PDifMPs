@@ -1,6 +1,7 @@
 #############################################################################
 #
 # Simulation of paths of the four test problems
+# + Test problem 1 with process dependent jump rate (sigmoid function)
 #
 #############################################################################
 
@@ -139,6 +140,44 @@ TP4_grid <- seq(0,t_fin,h)
 
 
 
+
+
+
+
+#############################################################################
+
+# tp 5
+
+sourceCpp(file="TP5_Cpp.cpp")
+
+
+# Set parameters
+sigma <- 1
+b <- 2
+lambda <- 0.1
+X0 <- 0
+z0 <- b
+eta <- 0.5
+
+# Set seed
+set.seed(3)
+
+# Simulate PDifMP
+TP5 <- tp5_cpp_t(t_fin,h,X0,z0,sigma,b,lambda,eta)
+TP5_path <- TP5$X
+TP5_jumps <- TP5$jumps
+TP5_gridPoints <- TP5$gridPoints
+
+# Compute grid
+TP5_grid <- c()
+for(i in 1: (length(TP5_gridPoints)-1)){
+  TP5_grid <- append(TP5_grid, seq(from=TP5_gridPoints[i],to=TP5_gridPoints[i+1],by=h))
+}
+if(grid[length(TP5_gridPoints)] != t_fin){
+  TP5_grid <- append(TP5_grid,t_fin)
+}
+
+
 ###########################################################################
 
 # plot paths
@@ -198,6 +237,23 @@ abline(h=0)
 
 mtext(side=2,expression(paste("TP 4 (Switched SHO)")),line=2.0,cex=0.9)
 mtext(expression(X[t]^{(1)}),side=3,line=-2,at=-2,cex=0.6)
-mtext(side=1,expression(t),line=2.0,cex=0.9)
+
+
+
+
+#-----------------------------
+# Path of TP5: Ornstein Uhlenbeck with sigmoid jump rate function
+#-----------------------------
+
+plot(TP5_grid,TP5_path,type="l",col="blue",ylim=c(-5,5),xlab="",ylab="")
+
+abline(v=TP5_jumps,lty=2)
+abline(h=0)
+
+mtext(side=2,expression(paste("TP 5 (OU)")),line=2.0,cex=0.9)
+mtext(expression(X[t]),side=3,line=-2,at=-2,cex=0.6)
+
+
+
 
 
